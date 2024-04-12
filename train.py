@@ -281,10 +281,10 @@ if __name__ == '__main__':
     #     num_workers=args.n_worker, pin_memory=True)
 
     # Load data from pickle files
-    train_images = pickle.load(open('train_images.pkl', 'rb'))
-    train_labels = pickle.load(open('train_labels.pkl', 'rb'))
-    val_images = pickle.load(open('val_images.pkl', 'rb'))
-    val_labels = pickle.load(open('val_labels.pkl', 'rb'))
+    train_images = pickle.load(open('../train_images.pkl', 'rb'))
+    train_labels = pickle.load(open('../train_labels.pkl', 'rb'))
+    val_images = pickle.load(open('../val_images.pkl', 'rb'))
+    val_labels = pickle.load(open('../val_labels.pkl', 'rb'))
 
     # Convert to PyTorch Tensors
     train_images = torch.tensor(train_images, dtype=torch.float32)
