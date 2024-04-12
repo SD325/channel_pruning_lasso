@@ -21,6 +21,8 @@ from models.vgg import vgg16_bn, vgg16_bn_x
 from utils.utils import accuracy, AverageMeter, progress_bar
 from thop import profile
 
+import pickle
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='AMC fine-tune script')
@@ -250,33 +252,79 @@ if __name__ == '__main__':
 
     print('=> Preparing data..')
     # get dir
-    traindir = os.path.join(args.data_root, 'train')
-    valdir = os.path.join(args.data_root, 'val')
+    # traindir = os.path.join(args.data_root, 'train')
+    # valdir = os.path.join(args.data_root, 'val')
 
-    # preprocessing
-    input_size = 224
-    imagenet_trans_train = [
-        transforms.RandomResizedCrop(input_size, scale=(0.2, 1.0)),
+    # # preprocessing
+    # input_size = 224
+    # imagenet_trans_train = [
+    #     transforms.RandomResizedCrop(input_size, scale=(0.2, 1.0)),
+    #     transforms.RandomHorizontalFlip(),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    # ]
+    # imagenet_trans_test = [
+    #     transforms.Resize(int(input_size / 0.875)),
+    #     transforms.CenterCrop(input_size),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    # ]
+
+    # train_loader = torch.utils.data.DataLoader(
+    #     datasets.ImageFolder(traindir, transforms.Compose(imagenet_trans_train)),
+    #     batch_size=args.batch_size, shuffle=True,
+    #     num_workers=args.n_worker, pin_memory=True, sampler=None)
+
+    # val_loader = torch.utils.data.DataLoader(
+    #     datasets.ImageFolder(valdir, transforms.Compose(imagenet_trans_test)),
+    #     batch_size=args.batch_size, shuffle=False,
+    #     num_workers=args.n_worker, pin_memory=True)
+
+    # Load data from pickle files
+    train_images = pickle.load(open('train_images.pkl', 'rb'))
+    train_labels = pickle.load(open('train_labels.pkl', 'rb'))
+    val_images = pickle.load(open('val_images.pkl', 'rb'))
+    val_labels = pickle.load(open('val_labels.pkl', 'rb'))
+
+    # Convert to PyTorch Tensors
+    train_images = torch.tensor(train_images, dtype=torch.float32)
+    train_labels = torch.tensor(train_labels, dtype=torch.long)
+    val_images = torch.tensor(val_images, dtype=torch.float32)
+    val_labels = torch.tensor(val_labels, dtype=torch.long)
+
+    # Normalization parameters
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+
+    # Define transforms
+    train_transform = transforms.Compose([
+        transforms.ToPILImage(),  # if images are not PIL images, convert them
+        transforms.RandomResizedCrop(224, scale=(0.2, 1.0)),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
-    imagenet_trans_test = [
-        transforms.Resize(int(input_size / 0.875)),
-        transforms.CenterCrop(input_size),
+        transforms.Normalize(mean, std),
+    ])
+
+    val_transform = transforms.Compose([
+        transforms.ToPILImage(),  # if images are not PIL images, convert them
+        transforms.Resize(int(224 / 0.875)),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
+        transforms.Normalize(mean, std),
+    ])
 
-    train_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(traindir, transforms.Compose(imagenet_trans_train)),
-        batch_size=args.batch_size, shuffle=True,
-        num_workers=args.n_worker, pin_memory=True, sampler=None)
+    # Apply transformations
+    train_images = torch.stack([train_transform(img) for img in train_images])
+    val_images = torch.stack([val_transform(img) for img in val_images])
 
-    val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose(imagenet_trans_test)),
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.n_worker, pin_memory=True)
+    # Create TensorDatasets
+    train_dataset = TensorDataset(train_images, train_labels)
+    val_dataset = TensorDataset(val_images, val_labels)
+
+    # Create DataLoaders
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_worker, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.n_worker, pin_memory=True)
+
 
     net = get_model()  # for measure
     IMAGE_SIZE = 224 if args.dataset == 'imagenet' else 32
