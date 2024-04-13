@@ -295,6 +295,8 @@ if __name__ == '__main__':
     val_images = torch.tensor(val_images, dtype=torch.float32)
     val_labels = torch.tensor(val_labels, dtype=torch.long)
 
+    print("Converted to PyTorch Tensors.")
+
     # Normalization parameters
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
@@ -320,6 +322,8 @@ if __name__ == '__main__':
     train_images = torch.stack([train_transform(img) for img in train_images])
     val_images = torch.stack([val_transform(img) for img in val_images])
 
+    print("Applied Transformations.")
+
     # Create TensorDatasets
     train_dataset = TensorDataset(train_images, train_labels)
     val_dataset = TensorDataset(val_images, val_labels)
@@ -328,6 +332,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_worker, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.n_worker, pin_memory=True)
 
+    print("Created Datasets and Dataloaders.")
 
     net = get_model()  # for measure
     IMAGE_SIZE = 224 if args.dataset == 'imagenet' else 32
