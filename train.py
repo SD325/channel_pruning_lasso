@@ -286,6 +286,9 @@ if __name__ == '__main__':
     val_images = pickle.load(open('../val_images.pkl', 'rb'))
     val_labels = pickle.load(open('../val_labels.pkl', 'rb'))
 
+    train_images = np.transpose(train_images, (0, 3, 1, 2))
+    val_images = np.transpose(val_images, (0, 3, 1, 2))
+
     # Convert to PyTorch Tensors
     train_images = torch.tensor(train_images, dtype=torch.float32)
     train_labels = torch.tensor(train_labels, dtype=torch.long)
