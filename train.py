@@ -21,6 +21,8 @@ from models.vgg import vgg16_bn, vgg16_bn_x
 from utils.utils import accuracy, AverageMeter, progress_bar
 from thop import profile
 
+from torch.util.data import DataLoader, TensorDataset
+
 import pickle
 
 
@@ -30,7 +32,7 @@ def parse_args():
     parser.add_argument('--dataset', default='imagenet', type=str, help='name of the dataset to train')
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
     parser.add_argument('--n_gpu', default=1, type=int, help='number of GPUs to use')
-    parser.add_argument('--batch_size', default=128, type=int, help='batch size')
+    parser.add_argument('--batch_size', default=32, type=int, help='batch size')
     parser.add_argument('--n_worker', default=4, type=int, help='number of data loader worker')
     parser.add_argument('--lr_type', default='exp', type=str, help='lr scheduler (exp/cos/step3/fixed)')
     parser.add_argument('--n_epoch', default=150, type=int, help='number of epochs to train')
@@ -280,53 +282,74 @@ if __name__ == '__main__':
     #     batch_size=args.batch_size, shuffle=False,
     #     num_workers=args.n_worker, pin_memory=True)
 
-    # Load data from pickle files
     train_images = pickle.load(open('../train_images.pkl', 'rb'))
     train_labels = pickle.load(open('../train_labels.pkl', 'rb'))
     val_images = pickle.load(open('../val_images.pkl', 'rb'))
     val_labels = pickle.load(open('../val_labels.pkl', 'rb'))
 
-    train_images = np.transpose(train_images, (0, 3, 1, 2))
-    val_images = np.transpose(val_images, (0, 3, 1, 2))
+    print("Type of val_images:", type(val_images))
+    print("Type of val_labels:", type(val_labels))
 
-    # Convert to PyTorch Tensors
-    train_images = torch.tensor(train_images, dtype=torch.float32)
-    train_labels = torch.tensor(train_labels, dtype=torch.long)
-    val_images = torch.tensor(val_images, dtype=torch.float32)
-    val_labels = torch.tensor(val_labels, dtype=torch.long)
+    # Check the shape of val_images and val_labels
+    print("Shape of val_images:", val_images.shape)
+    print("Shape of val_labels:", val_labels.shape)
 
-    print("Converted to PyTorch Tensors.")
+    # Check the data type of val_images and val_labels
+    print("Data type of val_images:", val_images.dtype)
+    print("Data type of val_labels:", val_labels.dtype)
 
-    # Normalization parameters
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
+    # Check the range of values in val_images
+    print("Minimum value in val_images:", val_images.min())
+    print("Maximum value in val_images:", val_images.max())
 
-    # Define transforms
-    train_transform = transforms.Compose([
-        transforms.ToPILImage(),  # if images are not PIL images, convert them
-        transforms.RandomResizedCrop(224, scale=(0.2, 1.0)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std),
+    # Check the unique labels in val_labels
+    print("Unique labels in val_labels:", np.unique(val_labels))
+
+    # Define the transformations for your dataset
+    # train_transforms = transforms.Compose([
+    #     transforms.ToPILImage(),
+    #     transforms.Pad(4),
+    #     transforms.RandomCrop(32),
+    #     transforms.RandomHorizontalFlip(),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    # ])
+
+    # test_transforms = transforms.Compose([
+    #     transforms.ToPILImage(),
+    #     transforms.Pad(4),
+    #     transforms.RandomCrop(32),
+    #     transforms.RandomHorizontalFlip(),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    # ])
+
+
+    train_transforms = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Pad(4),
+        transforms.RandomCrop(32),
+        transforms.ToTensor()
     ])
 
-    val_transform = transforms.Compose([
-        transforms.ToPILImage(),  # if images are not PIL images, convert them
-        transforms.Resize(int(224 / 0.875)),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std),
+    test_transforms = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Pad(4),
+        transforms.RandomCrop(32),
+        transforms.ToTensor()
     ])
 
-    # Apply transformations
-    train_images = torch.stack([train_transform(img) for img in train_images])
-    val_images = torch.stack([val_transform(img) for img in val_images])
+    # Apply transformations to the data
+    train_images_tensor = torch.stack([train_transforms(image) for image in train_images])
+    train_labels_tensor = torch.from_numpy(train_labels)
+    val_images_tensor = torch.stack([test_transforms(image) for image in val_images])
+    val_labels_tensor = torch.from_numpy(val_labels)
 
     print("Applied Transformations.")
 
-    # Create TensorDatasets
-    train_dataset = TensorDataset(train_images, train_labels)
-    val_dataset = TensorDataset(val_images, val_labels)
+    # Create TensorDataset instances
+    train_dataset = TensorDataset(train_images_tensor, train_labels_tensor)
+    val_dataset = TensorDataset(val_images_tensor, val_labels_tensor)
 
     # Create DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_worker, pin_memory=True)
