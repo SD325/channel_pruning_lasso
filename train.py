@@ -21,7 +21,7 @@ from models.vgg import vgg16_bn, vgg16_bn_x
 from utils.utils import accuracy, AverageMeter, progress_bar
 from thop import profile
 
-from torch.util.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset
 
 import pickle
 
